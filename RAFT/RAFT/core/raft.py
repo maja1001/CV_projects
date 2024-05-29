@@ -23,7 +23,6 @@ except:
 
 class RAFT(nn.Module):
     def __init__(self, args):
-        # small=False, dropout=0, alternate_corr=False
         super(RAFT, self).__init__()
         self.args = args
 
@@ -84,7 +83,7 @@ class RAFT(nn.Module):
         return up_flow.reshape(N, 2, 8*H, 8*W)
 
 
-    def forward(self, image1, image2, iters=12, flow_init=None, upsample=True, test_pixel=np.array([0,0,0]), test_mode=False):
+    def forward(self, image1, image2, iters=12, flow_init=None, upsample=True, test_mode=False):
         """ Estimate optical flow between pair of frames """
 
         image1 = 2 * (image1 / 255.0) - 1.0
@@ -105,7 +104,7 @@ class RAFT(nn.Module):
         if self.args.alternate_corr:
             corr_fn = AlternateCorrBlock(fmap1, fmap2, radius=self.args.corr_radius)
         else:
-            corr_fn = CorrBlock(fmap1, fmap2, radius=self.args.corr_radius, test_mode=test_mode)
+            corr_fn = CorrBlock(fmap1, fmap2, radius=self.args.corr_radius)
 
         # run the context network
         with autocast(enabled=self.args.mixed_precision):
@@ -119,28 +118,14 @@ class RAFT(nn.Module):
         if flow_init is not None:
             coords1 = coords1 + flow_init
 
-        if test_mode:
-            features = [fmap1, fmap2, net, inp]
-
         flow_predictions = []
-        motion_features = []
-        hidden_states = []
         for itr in range(iters):
             coords1 = coords1.detach()
-            # index correlation volume
-            if test_mode:
-                corr = corr_fn(coords1, test_pixel, itr=itr) 
-            else:
-                corr = corr_fn(coords1)
+            corr = corr_fn(coords1) # index correlation volume
 
             flow = coords1 - coords0
             with autocast(enabled=self.args.mixed_precision):
-                if test_mode:
-                    net, up_mask, delta_flow, _motion_features = self.update_block(net, inp, corr, flow, test_mode=True)
-                    motion_features.append(_motion_features)
-                    hidden_states.append(net)
-                else:
-                    net, up_mask, delta_flow = self.update_block(net, inp, corr, flow)
+                net, up_mask, delta_flow = self.update_block(net, inp, corr, flow)
 
             # F(t+1) = F(t) + \Delta(t)
             coords1 = coords1 + delta_flow
@@ -154,6 +139,6 @@ class RAFT(nn.Module):
             flow_predictions.append(flow_up)
 
         if test_mode:
-            return features, corr_fn.test_responses, motion_features, hidden_states, coords1 - coords0, flow_up
+            return coords1 - coords0, flow_up
             
         return flow_predictions

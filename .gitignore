@@ -2,3 +2,9 @@
 *.egg-info
 *.pt
 *.pth
+*.zip
+*.tar.gz
+
+models
+
+RAFT/PyTorch_Introduction/data

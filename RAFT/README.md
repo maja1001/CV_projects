@@ -1,6 +1,8 @@
 # RAFT 
 An overview of the [RAFT](https://arxiv.org/pdf/2003.12039.pdf) model.
 
+Original [Repository](https://github.com/itberrios/CV_projects/tree/main/RAFT)
+
 Setup conda env
  
     conda create --name raft
@@ -17,3 +19,4 @@ Setup conda env
     conda install matplotlib tensorboard scipy opencv -c conda-forge -y
     conda install ipykernel --update-deps --force-reinstall -y
     conda install pandas -y
+    conda install onnx -y
